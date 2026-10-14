@@ -5,6 +5,8 @@ import { sumEntries, targets } from "../lib/nutrition";
 import { computeXp, levelFromXp, today, weekKey, weekStreak } from "../lib/progress";
 import { useStore } from "../store";
 import type { AppState, ChatMessage } from "../types";
+import { COACH_PROMPT } from "../lib/coachPrompt";
+import { capability, isArtifact, type SampleFn } from "../lib/platform";
 
 const QUICK = [
   "Wie lief meine letzte Trainingswoche?",
@@ -46,6 +48,66 @@ export function buildContext(state: AppState) {
     ernaehrungHeute: { kcal: Math.round(todayFood.kcal), protein: Math.round(todayFood.protein), kh: Math.round(todayFood.carbs), fett: Math.round(todayFood.fat) },
     gewichtsverlauf: state.weightLog.slice(-8),
   };
+}
+
+type Ctx = ReturnType<typeof buildContext>;
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+
+/** Eigener Server (npm run dev / npm start): SSE-Stream von /api/coach */
+async function askViaServer(history: ChatMessage[], context: Ctx, signal: AbortSignal, onText: (t: string) => void) {
+  const res = await fetch(`${API_BASE}/api/coach`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: history, context }),
+    signal,
+  });
+  const isApi = res.headers.get("content-type")?.match(/json|event-stream/);
+  if (!isApi) throw new Error("Der KI-Coach braucht den App-Server. In dieser Version ist er nicht verfügbar – alle anderen Funktionen laufen normal.");
+  if (!res.ok || !res.body) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `Fehler ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let answer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const events = buf.split("\n\n");
+    buf = events.pop() ?? "";
+    for (const ev of events) {
+      const type = /^event: (.+)$/m.exec(ev)?.[1];
+      const data = JSON.parse(/^data: (.+)$/m.exec(ev)?.[1] ?? "{}");
+      if (type === "delta") {
+        answer += data.text;
+        onText(answer);
+      } else if (type === "error") {
+        throw new Error(data.error);
+      }
+    }
+  }
+}
+
+const SAMPLE_ERRORS: Record<string, string> = {
+  not_granted: "Der Coach braucht deine Erlaubnis, Claude zu fragen. Lade die Seite neu und erlaube den Zugriff.",
+  rate_limited: "Zu viele Anfragen – bitte kurz warten.",
+};
+
+/** Als claude.ai-Artifact: Claude über die sample-Capability fragen */
+async function askViaArtifact(history: ChatMessage[], context: Ctx, signal: AbortSignal, onText: (t: string) => void) {
+  const sample = await capability<SampleFn>("sample");
+  if (!sample) throw new Error("Der KI-Coach ist hier nicht verfügbar.");
+  const intro = `${COACH_PROMPT}\n\n<nutzerdaten>\n${JSON.stringify(context)}\n</nutzerdaten>\n\nErste Frage des Nutzers:\n`;
+  const turns = history.map((m, i) => (i === 0 ? { ...m, content: intro + m.content } : m));
+  try {
+    await sample(turns, { signal, cache: false, onText: ({ text }) => onText(text) });
+  } catch (e) {
+    const err = e as { code?: string; message?: string; text?: string };
+    if (err.text) onText(err.text);
+    throw Object.assign(new Error(SAMPLE_ERRORS[err.code ?? ""] ?? "Der Coach ist gerade nicht erreichbar."), { code: err.code });
+  }
 }
 
 /** Minimales Markdown: **fett** und Listenpunkte */
@@ -90,39 +152,16 @@ export function Coach() {
     abort.current = new AbortController();
 
     let answer = "";
+    const onText = (t: string) => {
+      answer = t;
+      setDraft(t);
+    };
     try {
-      const res = await fetch("/api/coach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, context: buildContext(state) }),
-        signal: abort.current.signal,
-      });
-      if (!res.ok || !res.body) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Fehler ${res.status}`);
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const events = buf.split("\n\n");
-        buf = events.pop() ?? "";
-        for (const ev of events) {
-          const type = /^event: (.+)$/m.exec(ev)?.[1];
-          const data = JSON.parse(/^data: (.+)$/m.exec(ev)?.[1] ?? "{}");
-          if (type === "delta") {
-            answer += data.text;
-            setDraft(answer);
-          } else if (type === "error") {
-            setError(data.error);
-          }
-        }
-      }
+      const ask = isArtifact ? askViaArtifact : askViaServer;
+      await ask(history, buildContext(state), abort.current.signal, onText);
     } catch (e) {
-      if ((e as Error).name !== "AbortError") setError((e as Error).message || "Coach nicht erreichbar.");
+      const err = e as Error & { code?: string };
+      if (err.name !== "AbortError" && err.code !== "cancelled") setError(err.message || "Coach nicht erreichbar.");
     } finally {
       if (answer) dispatch({ type: "setChat", chat: [...history, { role: "assistant", content: answer }] });
       setDraft("");

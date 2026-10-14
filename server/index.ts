@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { COACH_PROMPT } from "../src/lib/coachPrompt";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -13,16 +14,6 @@ try {
 } catch {
   client = null; // ohne Zugangsdaten läuft die App, nur der Coach ist aus
 }
-
-const SYSTEM_PROMPT = `Du bist "Coach", der persönliche KI-Trainer in einer Fitness-App.
-Du hilfst bei Krafttraining, Cardio, Ernährung, Mobility und Regeneration.
-
-So arbeitest du:
-- Antworte auf Deutsch, per du, motivierend aber ehrlich und konkret.
-- Nutze die Nutzerdaten im Kontextblock (Profil, Plan, letzte Workouts, Ernährung) und beziehe dich direkt darauf, z. B. auf Gewichte, Wiederholungen oder Kalorienziele.
-- Halte Antworten kurz und gut lesbar (Markdown-Listen, max. ~200 Wörter), außer der Nutzer will ausdrücklich mehr Details.
-- Gib praktische Empfehlungen mit Zahlen (Sätze, Wdh., Gewicht, Gramm, Minuten), wenn sinnvoll.
-- Du bist kein Arzt: Bei Schmerzen, Verletzungen, Vorerkrankungen, Essstörungen oder Medikamenten empfiehlst du, ärztlichen oder physiotherapeutischen Rat einzuholen, und schlägst nur schonende Alternativen vor.`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -67,7 +58,7 @@ app.post("/api/coach", async (req, res) => {
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     output_config: { effort: "low" },
-    system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+    system: [{ type: "text", text: COACH_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: history,
   });
   res.on("close", () => stream.abort());

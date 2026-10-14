@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ConfirmButton } from "../components/ConfirmButton";
+import { isArtifact } from "../lib/platform";
 import { generatePlan } from "../lib/plan";
 import { badges, computeXp, levelFromXp, rankFor, today, totalVolume, weekStreak } from "../lib/progress";
 import { targets } from "../lib/nutrition";
@@ -87,19 +89,20 @@ export function ProfileScreen() {
         <div className="row between"><span className="muted">Kalorienziel</span><span>{t.kcal} kcal · {t.protein} g Protein</span></div>
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn block" onClick={() => setEditing(true)}>Profil bearbeiten</button>
-          <button
-            className="btn block"
-            onClick={() => confirm("Neuen Plan generieren? Deine aktuellen Arbeitsgewichte werden zurückgesetzt.") && dispatch({ type: "setPlan", plan: generatePlan(p) })}
-          >
+          <ConfirmButton className="btn block" confirmLabel="Gewichte zurücksetzen?" onConfirm={() => dispatch({ type: "setPlan", plan: generatePlan(p) })}>
             Plan neu erstellen
-          </button>
+          </ConfirmButton>
         </div>
       </div>
 
-      <button className="btn ghost danger block" onClick={() => confirm("Wirklich alle Daten löschen?") && dispatch({ type: "reset" })}>
+      <ConfirmButton className="btn ghost danger block" confirmLabel="Tippen, um wirklich alles zu löschen" onConfirm={() => dispatch({ type: "reset" })}>
         Alle Daten löschen
-      </button>
-      <p className="muted small" style={{ textAlign: "center" }}>Deine Daten werden lokal auf diesem Gerät gespeichert. Nur wenn du den KI-Coach nutzt, wird ein Auszug davon zur Beantwortung an die KI gesendet.</p>
+      </ConfirmButton>
+      <p className="muted small" style={{ textAlign: "center" }}>
+        {isArtifact
+          ? "Deine Daten werden privat in deinem Claude-Konto gespeichert und sind nur für dich sichtbar. Wenn du den KI-Coach nutzt, wird ein Auszug davon an Claude gesendet."
+          : "Deine Daten werden lokal auf diesem Gerät gespeichert. Nur wenn du den KI-Coach nutzt, wird ein Auszug davon zur Beantwortung an die KI gesendet."}
+      </p>
     </>
   );
 }

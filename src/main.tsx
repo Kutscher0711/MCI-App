@@ -11,3 +11,12 @@ createRoot(document.getElementById("root")!).render(
     </StoreProvider>
   </StrictMode>,
 );
+
+// Service Worker nur im Produktions-Build und nur als eigenständige Seite (nicht eingebettet)
+if (import.meta.env.PROD && "serviceWorker" in navigator && window.top === window) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      // Offline-Modus nicht verfügbar – App funktioniert trotzdem
+    });
+  });
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ConfirmButton } from "../components/ConfirmButton";
 import { EQUIPMENT_LABEL, EXERCISE_BY_ID, MUSCLE_LABEL } from "../data/exercises";
 import { alternativesFor, progress, swapExercise, type ProgressionResult } from "../lib/plan";
 import { uid } from "../lib/progress";
@@ -288,9 +289,9 @@ function ActiveSession({
           <p className="eyebrow">Läuft · {mmss(elapsed)}</p>
           <h1 className="screen-title" style={{ marginBottom: 8 }}>{day.name}</h1>
         </div>
-        <button className="btn sm danger" onClick={() => confirm("Workout abbrechen? Fortschritt geht verloren.") && onCancel()}>
+        <ConfirmButton className="btn sm" confirmLabel="Wirklich abbrechen?" onConfirm={onCancel}>
           Abbrechen
-        </button>
+        </ConfirmButton>
       </div>
       <div className="bar" style={{ marginBottom: 16 }}>
         <i style={{ width: `${(doneSets / Math.max(1, totalSets)) * 100}%` }} />
