@@ -1,5 +1,7 @@
 # MCI-App – Personal Training AI
 
+**Live-App (PWA):** https://kutscher0711.github.io/MCI-App/
+
 Unsere eigene Version einer KI-Personal-Training-App, inspiriert von der Feature-Palette der „MCI – Personal Training AI“-App:
 **Krafttraining, Cardio, Ernährung, Mobility, Gamification und ein KI-Coach.**
 
@@ -46,8 +48,7 @@ Die App ist eine installierbare Progressive Web App (Manifest, Icons, Service Wo
 
 **Hosting über GitHub Pages:** Der Workflow `.github/workflows/deploy-pages.yml` baut und veröffentlicht die App bei jedem Push auf `main`.
 Einmalig nötig: im Repo unter **Settings → Pages → Build and deployment → Source** „GitHub Actions“ wählen.
-Danach läuft die App unter `https://<user>.github.io/MCI-App/`.
-(GitHub Pages für *private* Repos braucht einen kostenpflichtigen GitHub-Plan; alternativ das Repo öffentlich machen oder `dist/` bei Netlify/Vercel hochladen.)
+Danach läuft die App unter https://kutscher0711.github.io/MCI-App/.
 
 **Installieren:**
 - **iPhone (Safari):** Teilen-Button → „Zum Home-Bildschirm“
