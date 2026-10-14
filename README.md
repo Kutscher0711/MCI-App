@@ -40,6 +40,23 @@ npm run build     # Typecheck + Produktions-Build nach dist/
 npm start         # Server liefert dist/ und /api aus (Port 8787)
 ```
 
+## Als App aufs Handy (PWA)
+
+Die App ist eine installierbare Progressive Web App (Manifest, Icons, Service Worker, offline nutzbar).
+
+**Hosting über GitHub Pages:** Der Workflow `.github/workflows/deploy-pages.yml` baut und veröffentlicht die App bei jedem Push auf `main`.
+Einmalig nötig: im Repo unter **Settings → Pages → Build and deployment → Source** „GitHub Actions“ wählen.
+Danach läuft die App unter `https://<user>.github.io/MCI-App/`.
+(GitHub Pages für *private* Repos braucht einen kostenpflichtigen GitHub-Plan; alternativ das Repo öffentlich machen oder `dist/` bei Netlify/Vercel hochladen.)
+
+**Installieren:**
+- **iPhone (Safari):** Teilen-Button → „Zum Home-Bildschirm“
+- **Android (Chrome):** Menü ⋮ → „App installieren“
+
+Auf der statischen Seite ist der KI-Coach aus (er braucht den Server mit API-Key). Mit `npm start` auf einem eigenen Server läuft alles inkl. Coach.
+
+**Ohne eigenes Hosting:** `npm run build:artifact` erzeugt eine einzelne HTML-Datei, die als claude.ai-Artifact läuft – dort funktioniert auch der Coach (über dein Claude-Konto) und deine Daten werden privat gesichert.
+
 ## Projektstruktur
 
 ```
